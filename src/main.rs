@@ -21,6 +21,22 @@ fn main() -> Result<(), Box<dyn Error>> {
     stdout.execute(EnterAlternateScreen)?;
     stdout.execute(Hide)?;
 
+    // Game Loooop
+    'gameloop: loop {
+        //Input
+        while event::poll(Duration::default())? {
+            if let Event::key(key_event) = event::read()? {
+                match key_event.code {
+                    KeyCode::Esc | KeyCode::Char('q') => {
+                        audio.play("lose");
+                        break 'gameloop;
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+
     // Cleanup
     audio.wait();
     stdout.execute(Show)?;
