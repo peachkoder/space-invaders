@@ -1,20 +1,11 @@
-use crate::{NUM_ROwS, NUM_COLS};
+use crate::{NUM_COLS, NUM_ROWS};
 
-pub type Frame = Vec<Vec<&'static str>>;
+pub type Frame = [[char; NUM_ROWS]; NUM_COLS];
 
 pub fn new_frame() -> Frame {
-    let mut cols = Vec::with_capacity(NUM_COLS);
-    for _ in 0..NUM_COLS {
-        let mut col = Vec::with_capacity(NUM_ROwS);
-        for _ in 0..NUM_ROwS {
-            col.push(" ");
-        }
-        cols.push(col);
-    }
-    cols
+    [[' '; NUM_ROWS]; NUM_COLS]
 }
 
-// To be a drawable must implements the method draw
 pub trait Drawable {
     fn draw(&self, frame: &mut Frame);
 }
