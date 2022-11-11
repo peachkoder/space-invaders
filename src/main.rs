@@ -4,6 +4,15 @@ use crossterm::{
     terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
+use invaders::{
+    frame::{self, new_frame, Drawable, Frame},
+    invaders::Invaders,
+    level::Level,
+    menu::Menu,
+    player::Player,
+    render,
+    score::Score,
+};
 use rusty_audio::Audio;
 use std::{
     error::Error,
@@ -28,11 +37,29 @@ fn main() -> Result<(), Box<dyn Error>> {
     stdout.execute(EnterAlternateScreen)?;
     stdout.execute(Hide)?;
 
+    // Render looop in a separate thread
+    let (render_tx, render_rx) = mpsc::channel();
+    let render_handle = thread::spawn(move || {
+        let mut last_frame = frame::new_frame();
+        let mut stdout = io::stdout();
+        render::render(&mut stdout, &last_frame, &last_frame, true);
+        loop {
+            let curr_frame = match render_rx.recv() {
+                Ok(x) => x,
+                Err(_) => break,
+            };
+            render::render(&mut stdout, &last_frame, &curr_frame, false);
+            last_frame = curr_frame;
+        }
+    });
+
     // Game Loooop
     'gameloop: loop {
+        // Per-frame init
+        let curr_frame = new_frame();
         //Input
         while event::poll(Duration::default())? {
-            if let Event::key(key_event) = event::read()? {
+            if let Event::Key(key_event) = event::read()? {
                 match key_event.code {
                     KeyCode::Esc | KeyCode::Char('q') => {
                         audio.play("lose");
@@ -42,9 +69,14 @@ fn main() -> Result<(), Box<dyn Error>> {
                 }
             }
         }
+
+        // Draw & render
+        let _ = render_tx.send(curr_frame);
+        thread::sleep(Duration::from_millis(1));
     }
 
     // Cleanup
+    drop(render_tx);
     audio.wait();
     stdout.execute(Show)?;
     stdout.execute(LeaveAlternateScreen)?;
